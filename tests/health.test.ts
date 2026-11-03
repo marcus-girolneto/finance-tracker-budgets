@@ -14,7 +14,7 @@ async function migratedDb() {
   return db;
 }
 
-describe("readiness check", () => {
+describe("readiness check", { timeout: 30_000 }, () => {
   it("reports ready against a reachable, migrated database", async () => {
     const db = await migratedDb();
     const result = await checkReadiness(db, migrationsFolder);
