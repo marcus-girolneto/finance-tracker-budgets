@@ -23,7 +23,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test:coverage": "vitest run --coverage --coverage.include=src/server/budgets.server.ts --coverage.include=src/server/categories.server.ts --coverage.include=src/server/billing.server.ts --coverage.include=src/lib/money.ts --coverage.reporter=text"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1084.0",
@@ -77,6 +78,7 @@
     "@types/react-dom": "^19.2.0",
     "@typescript/native-preview": "7.0.0-dev.20260503.1",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "4.1.5",
     "babel-plugin-react-compiler": "^1.0.0",
     "better-sqlite3": "^12.11.1",
     "dotenv": "^17.3.1",
