@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, and, asc, count, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "#/db";
+import { queueBudgetAlerts } from "#/server/budgets.server";
 import { requireUserId } from "#/server/session";
 
 
@@ -214,6 +215,7 @@ export const updateCategory = createServerFn({ method: "POST" })
           eq(schema.categories.user_id, userId),
         ),
       );
+    queueBudgetAlerts(userId);
 
     return { success: true };
   });
@@ -305,10 +307,28 @@ export const deleteCategory = createServerFn({ method: "POST" })
       .delete(schema.categorization_rules)
       .where(inArray(schema.categorization_rules.category_id, allIdsToDelete));
 
+    await db
+      .delete(schema.budgets)
+      .where(
+        and(
+          inArray(schema.budgets.category_id, allIdsToDelete),
+          eq(schema.budgets.user_id, userId),
+        ),
+      );
+    await db
+      .delete(schema.budget_alerts)
+      .where(
+        and(
+          inArray(schema.budget_alerts.category_id, allIdsToDelete),
+          eq(schema.budget_alerts.user_id, userId),
+        ),
+      );
+
     // Delete all descendant categories first, then the target
     await db
       .delete(schema.categories)
       .where(inArray(schema.categories.id, allIdsToDelete));
+    if (data.reassignToCategoryId) queueBudgetAlerts(userId);
 
     return { success: true };
   });

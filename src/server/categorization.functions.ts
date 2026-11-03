@@ -3,6 +3,7 @@ import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "#/db";
 import { isEmailVerified, requireUserId } from "#/server/session";
+import { queueBudgetAlerts } from "#/server/budgets.server";
 import { matchRule, type RuleRow } from "#/server/imports.functions";
 import { categorizeDescription, isAIVisible } from "#/server/ai";
 import { checkSpendCap } from "#/server/ai-usage.server";
@@ -292,6 +293,7 @@ export const applyRuleToExisting = createServerFn({ method: "POST" })
         );
       updated++;
     }
+    if (updated > 0) queueBudgetAlerts(userId);
     return { success: true, updated };
   });
 
@@ -492,5 +494,6 @@ export const reCategorizeTransactions = createServerFn({ method: "POST" })
       await db.insert(schema.categorization_rules).values(aiRulesInsert);
     }
 
+    if (updated > 0) queueBudgetAlerts(userId);
     return { updated, aiCategorized, skipped };
   });

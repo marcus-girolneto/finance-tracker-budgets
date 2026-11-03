@@ -3,6 +3,7 @@ import { eq, count } from "drizzle-orm";
 import { db, schema } from "#/db";
 import { getMonthlyScanCount } from "#/server/ai-usage.server";
 import { getEntitlements, getSubscription } from "#/server/billing.server";
+import { countBudgets } from "#/server/budgets.server";
 import { env } from "#/server/env";
 import { requireUserId } from "#/server/session";
 import {
@@ -26,18 +27,20 @@ export interface BillingStatus {
   hasStripeCustomer: boolean;
   entitlements: {
     maxAccounts: number | null;
+    maxBudgets: number | null;
     scansPerMonth: number;
   };
   usage: {
     scansUsed: number;
     accountsUsed: number;
+    budgetsUsed: number;
   };
 }
 
 export const getBillingStatus = createServerFn({ method: "GET" }).handler(
   async (): Promise<BillingStatus> => {
     const userId = await requireUserId();
-    const [entitlements, subscription, scansUsed, accountRows] =
+    const [entitlements, subscription, scansUsed, accountRows, budgetsUsed] =
       await Promise.all([
         getEntitlements(userId),
         getSubscription(userId),
@@ -46,6 +49,7 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(
           .select({ count: count() })
           .from(schema.accounts)
           .where(eq(schema.accounts.user_id, userId)),
+        countBudgets(userId),
       ]);
 
     return {
@@ -56,11 +60,13 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(
       hasStripeCustomer: Boolean(subscription?.stripe_customer_id),
       entitlements: {
         maxAccounts: entitlements.maxAccounts,
+        maxBudgets: entitlements.maxBudgets,
         scansPerMonth: entitlements.scansPerMonth,
       },
       usage: {
         scansUsed,
         accountsUsed: accountRows[0]?.count ?? 0,
+        budgetsUsed,
       },
     };
   },

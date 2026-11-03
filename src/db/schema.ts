@@ -9,6 +9,8 @@ import {
   doublePrecision,
   serial,
   index,
+  uniqueIndex,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 export const auth_token_type = pgEnum("auth_token_type", [
@@ -206,6 +208,44 @@ export const categorization_rules = pgTable(
   (t) => [
     index("categorization_rules_user_priority_idx").on(t.user_id, t.priority),
   ],
+);
+
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: text("id").primaryKey(),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    category_id: text("category_id")
+      .notNull()
+      .references(() => categories.id),
+    limit_minor: integer("limit_minor").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex("budgets_user_category_idx").on(t.user_id, t.category_id)],
+);
+
+export const budget_alerts = pgTable(
+  "budget_alerts",
+  {
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    category_id: text("category_id")
+      .notNull()
+      .references(() => categories.id),
+    month: text("month").notNull(),
+    sent_at: timestamp("sent_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.user_id, t.category_id, t.month] })],
 );
 
 // One row per AI call (including fake-mode and failed calls) — the raw input
