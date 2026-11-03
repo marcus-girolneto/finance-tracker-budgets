@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "#/db";
 import { isEmailVerified, requireUserId } from "#/server/session";
+import { queueBudgetAlerts } from "#/server/budgets.server";
 import { categorizeDescription, isAIVisible } from "#/server/ai";
 import { checkSpendCap } from "#/server/ai-usage.server";
 import { formatMinor, parseAmountToMinor } from "#/lib/money";
@@ -1076,6 +1077,7 @@ async function* streamConfirmImport(
       row_count: insertRows.length,
     });
     await db.insert(schema.transactions).values(insertRows);
+    queueBudgetAlerts(userId);
 
     if (aiRulesToCreate.length > 0) {
       const aiRulesInsert = aiRulesToCreate.map((rule) => ({
