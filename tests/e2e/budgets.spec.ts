@@ -1,4 +1,13 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test, expect, type Page } from "./fixtures";
+
+const receiptImage = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "fixtures",
+  "images",
+  "receipt-test.png",
+);
 
 const today = new Date().toISOString().slice(0, 10);
 const lastMonth = (() => {
@@ -160,6 +169,25 @@ test.describe("Budget spending", () => {
     await page.goto("/budgets");
     await expect(budgetRow(page, "Budgeted Temp")).toBeHidden();
     await expect(page.getByText("No budgets yet")).toBeVisible();
+  });
+  test("a scanned receipt saved as a new transaction counts as spending", async ({
+    page,
+    signedInUser: _signedInUser,
+  }) => {
+    await page.goto("/budgets");
+    await addBudget(page, "Groceries", "30");
+    await expect(budgetRow(page, "Groceries")).toBeVisible();
+
+    await page.goto("/receipts/scan");
+    await page.getByTestId("file-input").setInputFiles(receiptImage);
+    await expect(page.getByTestId("store-name-input")).toHaveValue("FAKE_STORE");
+    await page.getByTestId("save-receipt-btn").click();
+    await expect(page.getByText("Receipt saved successfully!")).toBeVisible();
+
+    await page.goto("/budgets");
+    const row = budgetRow(page, "Groceries");
+    await expect(row.getByTestId("budget-spent")).toHaveText("36.99 PLN");
+    await expect(row.getByTestId("budget-left")).toHaveText("Over by 6.99 PLN");
   });
 });
 

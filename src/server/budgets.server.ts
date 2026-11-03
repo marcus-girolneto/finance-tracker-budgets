@@ -3,6 +3,7 @@ import { db, schema } from "#/db";
 import { formatMinor } from "#/lib/money";
 import { m } from "#/paraglide/messages";
 import { getEntitlements } from "#/server/billing.server";
+import { categorySubtree, childrenByParent } from "#/server/categories.server";
 import { sendEmail, type EmailMessage } from "#/server/email";
 import { getLogger } from "#/server/logger";
 
@@ -40,22 +41,6 @@ export function budgetMonth(now: Date): BudgetMonth {
   const from = isoDay(new Date(Date.UTC(year, monthIndex, 1)));
   const to = isoDay(new Date(Date.UTC(year, monthIndex + 1, 1)));
   return { month: from.slice(0, 7), from, to };
-}
-
-function categorySubtree(
-  rootId: string,
-  childrenByParent: Map<string, string[]>,
-): Set<string> {
-  const visited = new Set<string>([rootId]);
-  const pending = [rootId];
-  for (let current = pending.pop(); current !== undefined; current = pending.pop()) {
-    for (const child of childrenByParent.get(current) ?? []) {
-      if (visited.has(child)) continue;
-      visited.add(child);
-      pending.push(child);
-    }
-  }
-  return visited;
 }
 
 export async function getBudgetStatuses(
@@ -108,20 +93,14 @@ export async function getBudgetStatuses(
       .groupBy(schema.transactions.category_id),
   ]);
 
-  const childrenByParent = new Map<string, string[]>();
-  for (const category of categories) {
-    if (!category.parentId) continue;
-    const siblings = childrenByParent.get(category.parentId) ?? [];
-    siblings.push(category.id);
-    childrenByParent.set(category.parentId, siblings);
-  }
+  const children = childrenByParent(categories);
   const spentByCategory = new Map(
     spending.map((row) => [row.categoryId, row.spentMinor]),
   );
 
   return budgets.map((budget) => {
     let spentMinor = 0;
-    for (const id of categorySubtree(budget.categoryId, childrenByParent)) {
+    for (const id of categorySubtree(budget.categoryId, children)) {
       spentMinor += spentByCategory.get(id) ?? 0;
     }
     return {
