@@ -17,6 +17,7 @@ export interface Entitlements {
   plan: Plan;
   /** null = unlimited. */
   maxAccounts: number | null;
+  maxBudgets: number | null;
   scansPerMonth: number;
 }
 
@@ -32,12 +33,14 @@ export function entitlementsForPlan(plan: Plan): Entitlements {
     return {
       plan,
       maxAccounts: null,
+      maxBudgets: null,
       scansPerMonth: env.billing.proScansPerMonth,
     };
   }
   return {
     plan: "free",
     maxAccounts: env.billing.freeMaxAccounts,
+    maxBudgets: env.billing.freeMaxBudgets,
     scansPerMonth: env.ai.freeScansPerMonth,
   };
 }
