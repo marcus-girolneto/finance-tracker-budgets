@@ -453,6 +453,33 @@ describe("notifyOverBudgets", () => {
     ]);
   });
 
+  it("keeps alerting the remaining budgets when one category disappears mid-evaluation", async () => {
+    const userId = await seedUser();
+    const ids: Record<string, string> = {};
+    for (const name of ["Alpha", "Beta", "Gamma"]) {
+      ids[name] = await seedCategory(userId, name);
+      await createOk(userId, ids[name], 1_00);
+      await seedTransaction(userId, -2_00, "2026-03-05", ids[name]);
+    }
+    const subjects: string[] = [];
+    const send = vi.fn(async (message: EmailMessage) => {
+      subjects.push(message.subject);
+      if (subjects.length > 1) return;
+      await db
+        .update(schema.transactions)
+        .set({ category_id: null })
+        .where(eq(schema.transactions.category_id, ids.Beta));
+      await db.delete(schema.budgets).where(eq(schema.budgets.category_id, ids.Beta));
+      await db.delete(schema.categories).where(eq(schema.categories.id, ids.Beta));
+    });
+
+    expect(await notifyOverBudgets(userId, NOW, send)).toBe(2);
+    expect(subjects).toEqual([
+      expect.stringContaining("Alpha"),
+      expect.stringContaining("Gamma"),
+    ]);
+  });
+
   it("uses the configured email provider by default", async () => {
     const { userId } = await overBudgetUser();
     const { getCapturedEmails } = await import("#/server/email");

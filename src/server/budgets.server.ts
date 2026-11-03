@@ -260,11 +260,20 @@ export async function notifyOverBudgets(
       eq(schema.budget_alerts.category_id, budget.categoryId),
       eq(schema.budget_alerts.month, month),
     );
-    const claimed = await db
-      .insert(schema.budget_alerts)
-      .values({ user_id: userId, category_id: budget.categoryId, month })
-      .onConflictDoNothing()
-      .returning({ month: schema.budget_alerts.month });
+    let claimed: unknown[];
+    try {
+      claimed = await db
+        .insert(schema.budget_alerts)
+        .values({ user_id: userId, category_id: budget.categoryId, month })
+        .onConflictDoNothing()
+        .returning({ month: schema.budget_alerts.month });
+    } catch (error) {
+      getLogger().warn(
+        { err: error, budgetId: budget.id },
+        "could not claim over-budget alert",
+      );
+      continue;
+    }
     if (claimed.length === 0) continue;
 
     try {
