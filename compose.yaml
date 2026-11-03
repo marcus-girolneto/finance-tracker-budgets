@@ -1,0 +1,45 @@
+name: finance-tracker
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finance-local-only}
+      POSTGRES_DB: finance
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance -d finance"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_URL: postgres://finance:${POSTGRES_PASSWORD:-finance-local-only}@db:5432/finance
+      SESSION_SECRET: ${SESSION_SECRET:-local-docker-session-secret-change-me-32+}
+      APP_BASE_URL: http://localhost:${APP_PORT:-3000}
+      AI_FAKE: "1"
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    ipc: host
+    init: true
+
+volumes:
+  pg-data:

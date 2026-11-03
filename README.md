@@ -24,6 +24,32 @@ PGlite instance under `./data/pg`. See `.env.example` for optional settings
 Project conventions are documented in [CLAUDE.md](CLAUDE.md) (identical to
 [AGENTS.md](AGENTS.md)).
 
+## Running with Docker
+
+Requirements: Docker 24+ with Compose v2.
+
+```bash
+docker compose up --build -d            # app + Postgres -> http://localhost:3000
+docker compose logs -f app              # transactional emails (e.g. budget alerts) appear here
+docker compose down                     # stop; add -v to also drop the database volume
+```
+
+- `APP_PORT=3100 docker compose up --build -d` serves on another host port if 3000 is taken.
+- Runs the production image against a real Postgres (`db` service). Migrations apply on
+  startup. It is a local-demo configuration: emails are printed to the container log and AI
+  calls are faked (`AI_FAKE=1`). Set `SESSION_SECRET` and `POSTGRES_PASSWORD` for anything
+  beyond local use.
+- Create the first user on `/setup`. Verification links are printed in the app log.
+
+Run the full verification suite (typecheck, lint, unit/integration and Playwright E2E
+against the production build) in a container, with no local Node or browser setup:
+
+```bash
+docker compose --profile test run --rm --build test
+```
+
+Coverage for the core server modules: `pnpm run test:coverage`.
+
 ## How we'd like you to work
 
 You're welcome — encouraged — to use AI coding agents. Treat the task as
