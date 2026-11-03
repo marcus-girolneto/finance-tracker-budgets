@@ -110,3 +110,10 @@ Implements [TASK.md](TASK.md). Screenshots: [docs/screenshots](docs/screenshots)
   transaction. Covered by `tests/categories.test.ts`.
 - **Receipts:** receipts saved as new transactions were stored as income (positive amount).
   They are now stored as expenses. Existing rows are not migrated.
+
+## Architecture notes
+
+Observations about the current architecture and a proposed target that separates
+frontend and backend (React web app, Node/Fastify REST API with
+Clean/Hexagonal layers, shared Zod contracts), with an incremental migration
+plan: [docs/ARCHITECTURE_NOTES.md](docs/ARCHITECTURE_NOTES.md).
