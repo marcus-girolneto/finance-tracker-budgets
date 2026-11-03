@@ -38,6 +38,7 @@ const config = defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
+    testTimeout: 30_000,
   },
 });
 

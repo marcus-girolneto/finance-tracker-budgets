@@ -1,5 +1,6 @@
 #
-# PRs: full check (typecheck, lint, unit, E2E against the production build).
+# PRs: typecheck/lint, unit and E2E (against the production build) run as
+# parallel jobs; superseded runs for the same PR/branch are cancelled.
 # Merges to main: same check, then build and push the Docker image to GHCR
 # tagged with the commit SHA. Deployment pulls a SHA-tagged image — see
 # docs/runbooks/deploy.md; the deploy step itself is added once a hosting
@@ -12,9 +13,15 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  check:
-    runs-on: ubuntu-latest
+  static:
+    name: Typecheck & lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -23,8 +30,47 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install chromium --with-deps
-      - run: pnpm run check
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+
+  unit:
+    name: Unit & integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test
+
+  e2e:
+    name: E2E (production build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - if: steps.browsers.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install chromium --with-deps
+      - if: steps.browsers.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+      - run: pnpm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -34,9 +80,9 @@ jobs:
 
   docker:
     # Publish an image only for code that passed the full check on main.
-    needs: check
+    needs: [static, unit, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write

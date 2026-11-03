@@ -21,13 +21,12 @@ async function createAccount(page: Page, name: string) {
 async function importCsv(page: Page, fileName: string, accountLabel: string) {
   // Round-trip via Dashboard so the Import component unmounts and resets between calls.
   await page.getByRole("link", { name: "Dashboard" }).click();
+  await expect(page).toHaveURL("/dashboard");
   await page.getByRole("link", { name: "Import" }).click();
 
-  // Upload step — click the "Choose File" label to open the native file chooser
-  const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("main").getByText("Choose File").click();
-  const fileChooser = await fileChooserPromise;
-  await fileChooser.setFiles(fixturePath(fileName));
+  // Upload step — set the file on the input directly instead of racing the native file chooser
+  await expect(page).toHaveURL("/import");
+  await page.getByRole("main").locator('input[type="file"]').setInputFiles(fixturePath(fileName));
 
   // Wait for the mapping step to render (previewImport server call completes)
   await expect(page.getByRole("heading", { name: "Map columns" })).toBeVisible();
