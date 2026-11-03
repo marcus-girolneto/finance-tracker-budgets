@@ -1,0 +1,10 @@
+FROM mcr.microsoft.com/playwright:v1.59.1-noble
+WORKDIR /app
+ENV CI=1 COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+COPY project.inlang ./project.inlang
+COPY messages ./messages
+RUN pnpm install --frozen-lockfile
+COPY . .
+CMD ["pnpm", "run", "check"]
