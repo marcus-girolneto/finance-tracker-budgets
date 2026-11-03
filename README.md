@@ -74,3 +74,13 @@ Implements [TASK.md](TASK.md). Screenshots: [docs/screenshots](docs/screenshots)
 - `pnpm run test:e2e`: `tests/e2e/budgets.spec.ts` covers navigation, CRUD, validation,
   subcategory rollup, income and previous month excluded, over-budget state, exactly one
   email, category deletion, and Free vs Pro limits.
+
+## Fixes to existing code
+
+- **Category deletion (`deleteCategory`):** it never verified that the category belonged
+  to the caller, so any signed-in user could delete another user's unreferenced category.
+  It also ran without a transaction, so a mid-way failure left data half-changed. It now
+  lives in `src/server/categories.server.ts`, is ownership-checked, and runs in a single
+  transaction. Covered by `tests/categories.test.ts`.
+- **Receipts:** receipts saved as new transactions were stored as income (positive amount).
+  They are now stored as expenses. Existing rows are not migrated.
