@@ -522,7 +522,7 @@ export const saveReceiptAndLink = createServerFn({ method: "POST" })
         user_id: userId,
         account_id: data.accountId,
         date: data.date,
-        amount_minor: data.totalMinor,
+        amount_minor: -Math.abs(data.totalMinor),
         description: data.store_name || null,
         category_id: parentId,
         source: "receipt",
